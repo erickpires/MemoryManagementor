@@ -1,25 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
+#include "work_thread.h"
 #include "memory_managementor.h"
 
-#define MAX_PAGES 50
-#define MAX_THREADS 30
-
-#define SLEEP_TIME 3
+static bool threads_are_running = TRUE;
 
 void* thread_code(void* _t_info) {
 	thread_info* t_info = (thread_info*) _t_info;
 
-	while(TRUE) {
+	while(threads_are_running) {
 		int random_page = rand() % MAX_PAGES;
 		m_managementor_get_page(t_info->t_id, random_page);
 		sleep(SLEEP_TIME);
 	}
+	return NULL;
 }
 
-static pthread_t threads[MAX_THREADS];
-static thread_info t_infos[MAX_THREADS];
+static pthread_t threads[MAX_THREADS] = {};
+static thread_info t_infos[MAX_THREADS] = {};
 
 void create_thread() {
 	static uint current_thread_id = 0;
@@ -29,4 +29,18 @@ void create_thread() {
 	pthread_create(threads + current_thread_id, NULL, thread_code, t_info);
 
 	current_thread_id++;
+}
+
+void join_threads() {
+	pthread_t* thread_ptr = threads;
+	for(int i = 0; i < MAX_THREADS; i++) {
+		if(thread_ptr != NULL){
+			pthread_join(*thread_ptr, NULL);
+		}
+		thread_ptr++;
+	}
+}
+
+bool stop_threads() {
+	return !(threads_are_running = FALSE);
 }
