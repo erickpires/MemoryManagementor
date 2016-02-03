@@ -3,9 +3,11 @@
 #include <signal.h>
 #include "work_thread.h"
 #include "memory_managementor.h"
+#include "logger.h"
 
 #include "work_thread.c"
 #include "memory_managementor.c"
+#include "logger.c"
 
 // TODO: Create a log system and send all message to it. Avoid lost of
 //       concurrency by writing data to a file
@@ -30,5 +32,6 @@ int main(int argc, char** argv){
 
 	join_threads();
 
+	flush_log();
     return 0;
 }

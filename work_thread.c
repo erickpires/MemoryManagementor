@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include "logger.h"
 #include "work_thread.h"
 #include "memory_managementor.h"
 
@@ -10,11 +11,13 @@ static bool threads_are_running = TRUE;
 void* thread_code(void* _t_info) {
 	thread_info* t_info = (thread_info*) _t_info;
 
+	log_(t_info->t_id, log_process_created, 0);
 	while(threads_are_running) {
 		int random_page = rand() % MAX_PAGES;
 		m_managementor_get_page(t_info->t_id, random_page);
 		sleep(SLEEP_TIME);
 	}
+	log_(t_info->t_id, log_process_ended, 0);
 	return NULL;
 }
 
