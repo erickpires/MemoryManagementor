@@ -1,8 +1,7 @@
 #ifndef WORK_THREAD_H
 #define WORK_THREAD_H 1
 
-#define MAX_PAGES 50
-#define MAX_THREADS 30
+#define MAX_THREADS 20
 
 #define SLEEP_TIME 3
 
