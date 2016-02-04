@@ -25,13 +25,13 @@ void m_managementor_get_page(uint id, uint page_number) {
 
 	log_(id, log_page_requested, page_number);
 
-	page_table table = page_tables[id];
-	page_info page = table.pages[page_number];
+	page_table* table = page_tables + id;
+	page_info page = table->pages[page_number];
 	if(page.is_available) {
 		update_LRU(table, page_number);
 	}
 	else {
-		if(table.allocated_pages_number < WORKING_SET_LIMIT) {
+		if(table->allocated_pages_number < WORKING_SET_LIMIT) {
 			if(has_free_frame()) {
 				uint frame = remove_free_frame();
 				page.is_available = TRUE;
@@ -43,14 +43,14 @@ void m_managementor_get_page(uint id, uint page_number) {
 			}
 		}
 		else { // Working set is full
-			uint least_recent_page_number = table.LRU_pages[0];
-			page_info least_recent_page = pages[least_recent_page_number];
+			uint least_recent_page_number = table->LRU_pages[0];
+			page_info least_recent_page = table->pages[least_recent_page_number];
 
 			page.frame = least_recent_page.frame;
 			page.is_available = TRUE;
 			least_recent_page.is_available = FALSE;
 
-			delete_and_insert_LRU(table, least_recent_page_number, page_number);
+			replace_LRU(table, page_number);
 		}
 	}
 
@@ -58,3 +58,38 @@ void m_managementor_get_page(uint id, uint page_number) {
 	return;// result;
 }
 
+void insert_LRU(page_table* table, uint page_number) {
+	uint index = table->allocated_pages_number++;
+	table->LRU_pages[index] = page_number;
+}
+
+void update_LRU(page_table* table, uint recent_page_number) {
+	uint index;
+	// Finds the index of the current page in the LRU list
+	for(index = 0; index < WORKING_SET_LIMIT; index++) {
+		if(table->LRU_pages[index] == recent_page_number) break;
+	}
+
+	// Continues from where the previous loop stopped, copying
+	// each element to its right neighbor
+	for(index++; index < WORKING_SET_LIMIT; index++) {
+		table->LRU_pages[index - 1] = table->LRU_pages[index];
+	}
+
+	// Puts the current page in the rightmost position (most recent)
+	table->LRU_pages[WORKING_SET_LIMIT - 1] = recent_page_number;
+}
+
+void replace_LRU(page_table* table, uint page_number) {
+	for(uint index = 1; index < WORKING_SET_LIMIT; index++) {
+		table->LRU_pages[index - 1] = table->LRU_pages[index];
+	}
+	table->LRU_pages[WORKING_SET_LIMIT] = page_number;
+}
+
+uint remove_free_frame() {
+	uint result = free_frames->frame;
+	free_frames = free_frames->next;
+
+	return result;
+}
