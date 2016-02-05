@@ -19,6 +19,7 @@ typedef struct {
 	page_info pages[MAX_PAGES];
 	uint LRU_pages[WORKING_SET_LIMIT];
 	uint allocated_pages_number;
+	uint most_recent_page_time;
 } page_table;
 
 typedef struct _frame_list_node{
@@ -33,5 +34,7 @@ void update_LRU(page_table*, uint);
 void replace_LRU(page_table*, uint);
 
 uint remove_free_frame(void);
+
+void swap_out_process(int);
 
 #endif

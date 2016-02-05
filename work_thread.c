@@ -30,8 +30,9 @@ void create_thread() {
 	thread_info* t_info = t_infos + current_thread_id;
 	t_info->t_id = current_thread_id;
 	pthread_create(threads + current_thread_id, NULL, thread_code, t_info);
-
 	current_thread_id++;
+
+	log_(t_info->t_id, log_process_created,0);
 }
 
 void join_threads() {

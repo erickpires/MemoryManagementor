@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <time.h>
 #include "work_thread.h"
 #include "memory_managementor.h"
 #include "logger.h"
+
 
 #include "work_thread.c"
 #include "memory_managementor.c"

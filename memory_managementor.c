@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "logger.h"
 #include "memory_managementor.h"
 
@@ -40,6 +41,30 @@ void m_managementor_get_page(uint id, uint page_number) {
 			}
 			else { // Do not have enough memory
 				// swap_out_process
+
+				// loop in page_table* table loking for the oldest process using most_recent_page_time
+				uint oldest_page = clock(); // no process is older than clock()
+				int oldest_process = 21;
+
+				for(int i = 0; i < MAX_THREADS; i++) {
+
+					//page_table* used_page = page_tables[i]
+
+					if(page_tables[i].most_recent_page_time < oldest_page){
+						oldest_page = page_tables[i].most_recent_page_time; // new oldest most recent page
+						oldest_process = i; // the proud owner of the oldest most recent page
+					}
+
+				}
+
+				// now we know who to retire
+				swap_out_process(oldest_process);
+
+				// adding the new one
+				uint frame = remove_free_frame();
+				page.is_available = TRUE;
+				page.frame = frame;
+				insert_LRU(table, page_number);
 			}
 		}
 		else { // Working set is full
@@ -61,6 +86,9 @@ void m_managementor_get_page(uint id, uint page_number) {
 void insert_LRU(page_table* table, uint page_number) {
 	uint index = table->allocated_pages_number++;
 	table->LRU_pages[index] = page_number;
+
+	//Updates the age of the lastest page
+	table->most_recent_page_time = clock();
 }
 
 void update_LRU(page_table* table, uint recent_page_number) {
@@ -78,6 +106,10 @@ void update_LRU(page_table* table, uint recent_page_number) {
 
 	// Puts the current page in the rightmost position (most recent)
 	table->LRU_pages[WORKING_SET_LIMIT - 1] = recent_page_number;
+
+	//Updates the age of the lastest page
+	table->most_recent_page_time = clock();
+
 }
 
 void replace_LRU(page_table* table, uint page_number) {
@@ -85,6 +117,9 @@ void replace_LRU(page_table* table, uint page_number) {
 		table->LRU_pages[index - 1] = table->LRU_pages[index];
 	}
 	table->LRU_pages[WORKING_SET_LIMIT] = page_number;
+
+	//Updates the age of the lastest page
+	table->most_recent_page_time = clock();
 }
 
 uint remove_free_frame() {
@@ -92,4 +127,31 @@ uint remove_free_frame() {
 	free_frames = free_frames->next;
 
 	return result;
+}
+
+void swap_out_process(int process) {
+
+	for(int i = 0; i < MAX_THREADS; i++) {
+		if(page_tables[process].pages[i].is_available) {
+			// Give back the free frames
+			frame_list_node*  new_free;
+			new_free->frame = page_tables[process].pages[i].frame;
+			new_free ->next = free_frames;
+			free_frames = new_free;
+
+			// the page isn't available anymore
+			page_tables[process].pages[i].is_available = FALSE;
+
+			//logging the swap out
+			log_((uint)process,log_page_swapedout,(uint)i);
+		}
+	}
+
+	// Clean the LRU
+	for(int i = 0; i < WORKING_SET_LIMIT; i++) {
+		page_tables[process].LRU_pages[i] = 0;
+	}
+
+	page_tables[process].allocated_pages_number = 0;
+	//not resetting most_recent_page_time, don't need to
 }
