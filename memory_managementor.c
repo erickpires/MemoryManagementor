@@ -61,10 +61,11 @@ void m_managementor_get_page(uint id, uint page_number) {
 				swap_out_process(oldest_process);
 
 				// adding the new one
-				uint frame = remove_free_frame();
-				page.is_available = TRUE;
-				page.frame = frame;
-				insert_LRU(table, page_number);
+				// aparently this 4 lines of code below are responsible for a segfault
+				// uint frame = remove_free_frame();
+				// page.is_available = TRUE;
+				// page.frame = frame;
+				// insert_LRU(table, page_number); 
 			}
 		}
 		else { // Working set is full
