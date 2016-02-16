@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <semaphore.h>
 #include "logger.h"
 #include "memory_managementor.h"
 
@@ -10,11 +11,17 @@ static page_table page_tables[MAX_THREADS] = {};
 
 static frame_list_node* free_frames;
 
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void init_m_managementor() {
+
+	free_frames = (frame_list_node*) malloc(sizeof(frame_list_node));
+	free_frames->frame = 0;
 	frame_list_node* current_frame = free_frames;
-	for(int frame = 0; frame < MAX_FRAMES; frame++) {
-		current_frame = (frame_list_node*) malloc(sizeof(frame_list_node));
-		current_frame->frame = frame;
+
+	for(uint frame = 1; frame < MAX_FRAMES; frame++) {
+		current_frame->next = (frame_list_node*) malloc(sizeof(frame_list_node));
+		current_frame->next->frame = frame;
 		current_frame = current_frame->next;
 	}
 
@@ -23,17 +30,20 @@ void init_m_managementor() {
 
 void m_managementor_get_page(uint id, uint page_number) {
 	//page_info result = {};
-
+	pthread_mutex_lock(&mutex);
 	log_(id, log_page_requested, page_number);
 
 	page_table* table = page_tables + id;
 	page_info page = table->pages[page_number];
 	if(page.is_available) {
+		printf("Page is avaible\n");
 		update_LRU(table, page_number);
 	}
 	else {
 		if(table->allocated_pages_number < WORKING_SET_LIMIT) {
+			printf("Working set is not full\n");
 			if(has_free_frame()) {
+				printf("Has free frame\n");
 				uint frame = remove_free_frame();
 				page.is_available = TRUE;
 				page.frame = frame;
@@ -41,10 +51,11 @@ void m_managementor_get_page(uint id, uint page_number) {
 			}
 			else { // Do not have enough memory
 				// swap_out_process
+				printf("Swapout\n");
 
-				// loop in page_table* table loking for the oldest process using most_recent_page_time
+				// loop in page_table* table looking for the oldest process using most_recent_page_time
 				uint oldest_page = clock(); // no process is older than clock()
-				int oldest_process = 21;
+				int oldest_process;
 
 				for(int i = 0; i < MAX_THREADS; i++) {
 
@@ -54,7 +65,6 @@ void m_managementor_get_page(uint id, uint page_number) {
 						oldest_page = page_tables[i].most_recent_page_time; // new oldest most recent page
 						oldest_process = i; // the proud owner of the oldest most recent page
 					}
-
 				}
 
 				// now we know who to retire
@@ -65,10 +75,11 @@ void m_managementor_get_page(uint id, uint page_number) {
 				// uint frame = remove_free_frame();
 				// page.is_available = TRUE;
 				// page.frame = frame;
-				// insert_LRU(table, page_number); 
+				// insert_LRU(table, page_number);
 			}
 		}
 		else { // Working set is full
+			printf("Working set is full\n");
 			uint least_recent_page_number = table->LRU_pages[0];
 			page_info least_recent_page = table->pages[least_recent_page_number];
 
@@ -81,6 +92,7 @@ void m_managementor_get_page(uint id, uint page_number) {
 	}
 
 	printf("Execution Unity %d requested page: %d\n", id, page_number);
+	pthread_mutex_unlock(&mutex);
 	return;// result;
 }
 
@@ -125,8 +137,11 @@ void replace_LRU(page_table* table, uint page_number) {
 
 uint remove_free_frame() {
 	uint result = free_frames->frame;
-	free_frames = free_frames->next;
+	frame_list_node* next = free_frames->next;
 
+	free(free_frames);
+
+	free_frames = next;
 	return result;
 }
 
