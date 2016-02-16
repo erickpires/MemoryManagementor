@@ -54,16 +54,15 @@ void m_managementor_get_page(uint id, uint page_number) {
 				printf("Swapout\n");
 
 				// loop in page_table* table looking for the oldest process using most_recent_page_time
-				uint oldest_page = clock(); // no process is older than clock()
-				int oldest_process;
+				clock_t oldest_page = clock(); // no process is older than clock()
+				uint oldest_process;
 
-				for(int i = 0; i < MAX_THREADS; i++) {
-
+				for(int process = 0; process < MAX_THREADS; i++) {
 					//page_table* used_page = page_tables[i]
-
-					if(page_tables[i].most_recent_page_time < oldest_page){
-						oldest_page = page_tables[i].most_recent_page_time; // new oldest most recent page
-						oldest_process = i; // the proud owner of the oldest most recent page
+					if(page_tables[process].allocated_pages_number > 0 &&
+						page_tables[process].most_recent_page_time < oldest_page){
+						oldest_page = page_tables[process].most_recent_page_time; // new oldest most recent page
+						oldest_process = process; // the proud owner of the oldest most recent page
 					}
 				}
 
@@ -71,11 +70,11 @@ void m_managementor_get_page(uint id, uint page_number) {
 				swap_out_process(oldest_process);
 
 				// adding the new one
-				// aparently this 4 lines of code below are responsible for a segfault
-				// uint frame = remove_free_frame();
-				// page.is_available = TRUE;
-				// page.frame = frame;
-				// insert_LRU(table, page_number);
+
+				uint frame = remove_free_frame();
+				page.is_available = TRUE;
+				page.frame = frame;
+				insert_LRU(table, page_number);
 			}
 		}
 		else { // Working set is full
@@ -145,28 +144,28 @@ uint remove_free_frame() {
 	return result;
 }
 
-void swap_out_process(int process) {
+void swap_out_process(uint process) {
 
-	for(int i = 0; i < MAX_THREADS; i++) {
+	for(uint i = 0; i < MAX_PAGES; i++) {
 		if(page_tables[process].pages[i].is_available) {
 			// Give back the free frames
-			frame_list_node*  new_free;
+			frame_list_node*  new_free = (frame_list_node*) malloc(sizeof(frame_list_node));
 			new_free->frame = page_tables[process].pages[i].frame;
-			new_free ->next = free_frames;
+			new_free->next = free_frames;
 			free_frames = new_free;
 
 			// the page isn't available anymore
 			page_tables[process].pages[i].is_available = FALSE;
 
 			//logging the swap out
-			log_((uint)process,log_page_swapedout,(uint)i);
+			log_(process, log_page_swapedout, i);
 		}
 	}
 
-	// Clean the LRU
-	for(int i = 0; i < WORKING_SET_LIMIT; i++) {
-		page_tables[process].LRU_pages[i] = 0;
-	}
+	// // Clean the LRU
+	// for(int i = 0; i < WORKING_SET_LIMIT; i++) {
+	// 	page_tables[process].LRU_pages[i] = 0;
+	// }
 
 	page_tables[process].allocated_pages_number = 0;
 	//not resetting most_recent_page_time, don't need to
