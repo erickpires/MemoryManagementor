@@ -24,8 +24,6 @@ void init_m_managementor() {
 		current_frame->next->frame = frame;
 		current_frame = current_frame->next;
 	}
-
-	printf("Size of tables %ld\n", sizeof(page_tables));
 }
 
 void m_managementor_get_page(uint id, uint page_number) {
@@ -34,57 +32,52 @@ void m_managementor_get_page(uint id, uint page_number) {
 	log_(id, log_page_requested, page_number);
 
 	page_table* table = page_tables + id;
-	page_info page = table->pages[page_number];
-	if(page.is_available) {
-		printf("Page is avaible\n");
+	page_info* page = table->pages + page_number;
+	if(page->is_available) {
 		update_LRU(table, page_number);
 	}
 	else {
 		if(table->allocated_pages_number < WORKING_SET_LIMIT) {
-			printf("Working set is not full\n");
 			if(has_free_frame()) {
-				printf("Has free frame\n");
 				uint frame = remove_free_frame();
-				page.is_available = TRUE;
-				page.frame = frame;
+				page->is_available = TRUE;
+				page->frame = frame;
 				insert_LRU(table, page_number);
 			}
 			else { // Do not have enough memory
 				// swap_out_process
-				printf("Swapout\n");
 
 				// loop in page_table* table looking for the oldest process using most_recent_page_time
 				clock_t oldest_page = clock(); // no process is older than clock()
 				uint oldest_process;
 
-				for(int process = 0; process < MAX_THREADS; i++) {
+				for(int current_process = 0; current_process < MAX_THREADS; current_process++) {
 					//page_table* used_page = page_tables[i]
-					if(page_tables[process].allocated_pages_number > 0 &&
-						page_tables[process].most_recent_page_time < oldest_page){
-						oldest_page = page_tables[process].most_recent_page_time; // new oldest most recent page
-						oldest_process = process; // the proud owner of the oldest most recent page
+					if(page_tables[current_process].allocated_pages_number > 0 &&
+						page_tables[current_process].most_recent_page_time < oldest_page){
+						oldest_page = page_tables[current_process].most_recent_page_time; // new oldest most recent page
+						oldest_process = current_process; // the proud owner of the oldest most recent page
 					}
 				}
 
 				// now we know who to retire
 				swap_out_process(oldest_process);
-
 				// adding the new one
 
 				uint frame = remove_free_frame();
-				page.is_available = TRUE;
-				page.frame = frame;
+				page->is_available = TRUE;
+				page->frame = frame;
 				insert_LRU(table, page_number);
 			}
 		}
 		else { // Working set is full
 			printf("Working set is full\n");
 			uint least_recent_page_number = table->LRU_pages[0];
-			page_info least_recent_page = table->pages[least_recent_page_number];
+			page_info* least_recent_page = table->pages + least_recent_page_number;
 
-			page.frame = least_recent_page.frame;
-			page.is_available = TRUE;
-			least_recent_page.is_available = FALSE;
+			page->frame = least_recent_page->frame;
+			page->is_available = TRUE;
+			least_recent_page->is_available = FALSE;
 
 			replace_LRU(table, page_number);
 		}
@@ -146,14 +139,16 @@ uint remove_free_frame() {
 
 void swap_out_process(uint process) {
 
+	page_table* table = page_tables + process;
+
 	for(uint i = 0; i < MAX_PAGES; i++) {
+
 		if(page_tables[process].pages[i].is_available) {
 			// Give back the free frames
 			frame_list_node*  new_free = (frame_list_node*) malloc(sizeof(frame_list_node));
 			new_free->frame = page_tables[process].pages[i].frame;
 			new_free->next = free_frames;
 			free_frames = new_free;
-
 			// the page isn't available anymore
 			page_tables[process].pages[i].is_available = FALSE;
 
@@ -162,11 +157,5 @@ void swap_out_process(uint process) {
 		}
 	}
 
-	// // Clean the LRU
-	// for(int i = 0; i < WORKING_SET_LIMIT; i++) {
-	// 	page_tables[process].LRU_pages[i] = 0;
-	// }
-
 	page_tables[process].allocated_pages_number = 0;
-	//not resetting most_recent_page_time, don't need to
 }
