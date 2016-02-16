@@ -11,7 +11,7 @@ typedef enum {
 	log_process_ended,
 	log_page_requested,
 	log_page_swapedout,
-	log_page_swapedin
+	log_page_fault
 } log_event;
 
 typedef struct {

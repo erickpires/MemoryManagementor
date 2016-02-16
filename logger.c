@@ -34,10 +34,10 @@ void flush_log() {
 				printf("Process %d requested page %d at %ld\n", info.process_id, info.event_data, info.when);
 				break;
 			case log_page_swapedout :
-				printf("Page %d swaped out at %ld\n", info.event_data, info.when);
+				printf("Page %d of process %d swaped out at %ld\n", info.event_data, info.process_id, info.when);
 				break;
-			case log_page_swapedin :
-				printf("Page %d swaped in at %ld\n", info.event_data, info.when);
+			case log_page_fault :
+				printf("Pagefault in page %d of process %d at %ld\n", info.process_id, info.event_data, info.when);
 				break;
 		}
 	}

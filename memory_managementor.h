@@ -4,6 +4,7 @@
 #define MAX_PAGES 50
 #define MAX_FRAMES 64
 #define WORKING_SET_LIMIT 4
+#define CLOCKS_FOR_DISK_ACCESS 100000
 
 typedef unsigned int uint;
 typedef int bool;
@@ -36,5 +37,7 @@ void replace_LRU(page_table*, uint);
 uint remove_free_frame(void);
 
 void swap_out_process(uint);
+
+void wait_clocks(clock_t);
 
 #endif
