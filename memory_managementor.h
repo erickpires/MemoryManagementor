@@ -30,9 +30,9 @@ typedef struct _frame_list_node{
 
 void init_m_managementor(void);
 void m_managementor_get_page(uint, uint);
-void insert_LRU(page_table*, uint);
-void update_LRU(page_table*, uint);
-void replace_LRU(page_table*, uint);
+void insert_LRU(uint, uint);
+void update_LRU(uint, uint);
+void replace_LRU(uint, uint);
 
 uint remove_free_frame(void);
 

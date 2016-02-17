@@ -22,6 +22,7 @@ void* thread_code(void* _t_info) {
 
 static pthread_t threads[MAX_THREADS] = {};
 static thread_info t_infos[MAX_THREADS] = {};
+static uint created_threads_number = 0;
 
 void create_thread() {
 	static uint current_thread_id = 0;
@@ -31,12 +32,13 @@ void create_thread() {
 	pthread_create(threads + current_thread_id, NULL, thread_code, t_info);
 	current_thread_id++;
 
-	log_(t_info->t_id, log_process_created,0);
+	log_(t_info->t_id, log_process_created, 0);
+	created_threads_number++;
 }
 
 void join_threads() {
 	pthread_t* thread_ptr = threads;
-	for(int i = 0; i < MAX_THREADS; i++) {
+	for(int i = 0; i < created_threads_number; i++) {
 		if(thread_ptr != NULL){
 			pthread_join(*thread_ptr, NULL);
 		}

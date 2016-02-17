@@ -18,7 +18,10 @@
 
 #define TIME_BETWEEN_THREADS 3
 
+bool is_running = TRUE;
+
 void finish_handler(int sig) {
+	is_running = FALSE;
 	if(!stop_threads()) {
 		fprintf(stderr, "Could not stop threads safely\n");
 		exit(1);
@@ -32,13 +35,12 @@ int main(int argc, char** argv){
 
 	init_m_managementor();
 
-	for(int i = 0; i < MAX_THREADS; i++) {
+	for(int i = 0; i < MAX_THREADS && is_running; i++) {
 		create_thread();
-		//sleep(TIME_BETWEEN_THREADS);
+		sleep(TIME_BETWEEN_THREADS);
 	}
 
 	join_threads();
 
-	flush_log();
     return 0;
 }

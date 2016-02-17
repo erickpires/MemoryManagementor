@@ -36,15 +36,18 @@ void init_m_managementor() {
 
 void m_managementor_get_page(uint id, uint page_number) {
 	//page_info result = {};
-	log_(id, log_page_requested, page_number);
+	// TODO(log): alocação de memória real de acordo com a solicitação das páginas
+	// TODO(log): lista de substituição de páginas (LRU)
+	// TODO: A cada solicitação de página o gerenciador da MV tem que apresentar a tabela de páginas virtuais do processo solicitante;
+	log_(id, log_page_requested, &page_number);
 
 	page_table* table = page_tables + id;
 	page_info* page = table->pages + page_number;
 	if(page->is_available) {
-		update_LRU(table, page_number);
+		update_LRU(id, page_number);
 	}
 	else {
-		log_(id, log_page_fault, page_number);
+		log_(id, log_page_fault, &page_number);
 
 		pthread_mutex_lock(&disk_mutex);
 		wait_clocks(CLOCKS_FOR_DISK_ACCESS);
@@ -59,7 +62,7 @@ void m_managementor_get_page(uint id, uint page_number) {
 
 				page->is_available = TRUE;
 				page->frame = frame;
-				insert_LRU(table, page_number);
+				insert_LRU(id, page_number);
 			}
 			else { // Do not have enough memory
 				// swap_out_process
@@ -87,7 +90,7 @@ void m_managementor_get_page(uint id, uint page_number) {
 
 				page->is_available = TRUE;
 				page->frame = frame;
-				insert_LRU(table, page_number);
+				insert_LRU(id, page_number);
 			}
 		}
 		else { // Working set is full
@@ -98,23 +101,34 @@ void m_managementor_get_page(uint id, uint page_number) {
 			page->is_available = TRUE;
 			least_recent_page->is_available = FALSE;
 
-			replace_LRU(table, page_number);
+			replace_LRU(id, page_number);
 		}
 	}
 
-	 printf("Execution Unity %d requested page: %d\n", id, page_number);
+	// printf("Execution Unity %d requested page: %d\n", id, page_number);
+
+	log_(id, log_page_delivered, table);
+	log_(id, log_frames_updated, page_tables);
 	return;// result;
 }
 
-void insert_LRU(page_table* table, uint page_number) {
+void insert_LRU(uint process_id, uint page_number) {
+	page_table* table = page_tables + process_id;
+	log_(process_id, log_LRU_will_change, table);
+
 	uint index = table->allocated_pages_number++;
 	table->LRU_pages[index] = page_number;
 
 	// Updates the age of the last page
 	table->most_recent_page_time = clock();
+
+	log_(process_id, log_LRU_changed, table);
 }
 
-void update_LRU(page_table* table, uint recent_page_number) {
+void update_LRU(uint process_id, uint recent_page_number) {
+	page_table* table = page_tables + process_id;
+	log_(process_id, log_LRU_will_change, table);
+
 	uint index;
 	// Finds the index of the current page in the LRU list
 	for(index = 0; index < WORKING_SET_LIMIT; index++) {
@@ -133,16 +147,23 @@ void update_LRU(page_table* table, uint recent_page_number) {
 	// Updates the age of the last page
 	table->most_recent_page_time = clock();
 
+	log_(process_id, log_LRU_changed, table);
 }
 
-void replace_LRU(page_table* table, uint page_number) {
+void replace_LRU(uint process_id, uint page_number) {
+	page_table* table = page_tables + process_id;
+
+	log_(process_id, log_LRU_will_change, table);
+
 	for(uint index = 1; index < WORKING_SET_LIMIT; index++) {
 		table->LRU_pages[index - 1] = table->LRU_pages[index];
 	}
-	table->LRU_pages[WORKING_SET_LIMIT] = page_number;
+	table->LRU_pages[WORKING_SET_LIMIT - 1] = page_number;
 
 	// Updates the age of the last page
 	table->most_recent_page_time = clock();
+
+	log_(process_id, log_LRU_changed, table);
 }
 
 uint remove_free_frame() {
@@ -171,7 +192,7 @@ void swap_out_process(uint process) {
 			page_tables[process].pages[i].is_available = FALSE;
 
 			// logging the swap out
-			log_(process, log_page_swapedout, i);
+			log_(process, log_page_swapedout, &i);
 		}
 	}
 
