@@ -33,6 +33,7 @@ int main(int argc, char** argv){
 	signal(SIGINT, finish_handler);
 	signal(SIGQUIT, finish_handler);
 
+	init_logger();
 	init_m_managementor();
 
 	for(int i = 0; i < MAX_THREADS && is_running; i++) {

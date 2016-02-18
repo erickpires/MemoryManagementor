@@ -27,6 +27,10 @@ void init_m_managementor() {
 	free_frames->frame = 0;
 	frame_list_node* current_frame = free_frames;
 
+	for(uint process = 0; process < MAX_THREADS; process++) {
+		pthread_mutex_init(&(page_tables[process].LRU_mutex), NULL);
+	}
+
 	for(uint frame = 1; frame < MAX_FRAMES; frame++) {
 		current_frame->next = (frame_list_node*) malloc(sizeof(frame_list_node));
 		current_frame->next->frame = frame;
@@ -83,8 +87,20 @@ void m_managementor_get_page(uint id, uint page_number) {
 				// now we know who to retire
 				swap_out_process(oldest_process);
 
+				printf("\n\nNew frames are: \n");
+				for(frame_list_node* node = free_frames; node != NULL; node = node->next) {
+					printf("%d ", node->frame);
+				}
+				puts("");
+
 				// adding the new one
 				uint frame = remove_free_frame();
+
+				printf("\n\nNew frames are: \n");
+				for(frame_list_node* node = free_frames; node != NULL; node = node->next) {
+					printf("%d ", node->frame);
+				}
+				puts("");
 
 				pthread_mutex_unlock(&frames_mutex);
 
@@ -114,6 +130,7 @@ void m_managementor_get_page(uint id, uint page_number) {
 
 void insert_LRU(uint process_id, uint page_number) {
 	page_table* table = page_tables + process_id;
+	pthread_mutex_lock(&(table->LRU_mutex));
 	log_(process_id, log_LRU_will_change, table);
 
 	uint index = table->allocated_pages_number++;
@@ -121,38 +138,40 @@ void insert_LRU(uint process_id, uint page_number) {
 
 	// Updates the age of the last page
 	table->most_recent_page_time = clock();
-
 	log_(process_id, log_LRU_changed, table);
+	pthread_mutex_unlock(&(table->LRU_mutex));
 }
 
 void update_LRU(uint process_id, uint recent_page_number) {
 	page_table* table = page_tables + process_id;
+	pthread_mutex_lock(&(table->LRU_mutex));
 	log_(process_id, log_LRU_will_change, table);
 
 	uint index;
 	// Finds the index of the current page in the LRU list
-	for(index = 0; index < WORKING_SET_LIMIT; index++) {
+	for(index = 0; index < table->allocated_pages_number; index++) {
 		if(table->LRU_pages[index] == recent_page_number) break;
 	}
 
 	// Continues from where the previous loop stopped, copying
 	// each element to its right neighbor
-	for(index++; index < WORKING_SET_LIMIT; index++) {
+	for(index++; index < table->allocated_pages_number; index++) {
 		table->LRU_pages[index - 1] = table->LRU_pages[index];
 	}
 
 	// Puts the current page in the rightmost position (most recent)
-	table->LRU_pages[WORKING_SET_LIMIT - 1] = recent_page_number;
+	table->LRU_pages[table->allocated_pages_number - 1] = recent_page_number;
 
 	// Updates the age of the last page
 	table->most_recent_page_time = clock();
 
 	log_(process_id, log_LRU_changed, table);
+	pthread_mutex_unlock(&(table->LRU_mutex));
 }
 
 void replace_LRU(uint process_id, uint page_number) {
 	page_table* table = page_tables + process_id;
-
+	pthread_mutex_lock(&(table->LRU_mutex));
 	log_(process_id, log_LRU_will_change, table);
 
 	for(uint index = 1; index < WORKING_SET_LIMIT; index++) {
@@ -164,6 +183,7 @@ void replace_LRU(uint process_id, uint page_number) {
 	table->most_recent_page_time = clock();
 
 	log_(process_id, log_LRU_changed, table);
+	pthread_mutex_unlock(&(table->LRU_mutex));
 }
 
 uint remove_free_frame() {
@@ -181,8 +201,15 @@ void swap_out_process(uint process) {
 	wait_clocks(CLOCKS_FOR_DISK_ACCESS);
 	pthread_mutex_unlock(&disk_mutex);
 
+	page_table* table = page_tables + process;
+
+	pthread_mutex_lock(&(table->LRU_mutex));
+	printf("Old frames are: ");
+
+	// for(uint page_index = 0; page_)
+
 	for(uint i = 0; i < MAX_PAGES; i++) {
-		if(page_tables[process].pages[i].is_available) {
+		if(table->pages[i].is_available) {
 			// Give back the free frames
 			frame_list_node*  new_free = (frame_list_node*) malloc(sizeof(frame_list_node));
 			new_free->frame = page_tables[process].pages[i].frame;
@@ -191,10 +218,12 @@ void swap_out_process(uint process) {
 			// the page isn't available anymore
 			page_tables[process].pages[i].is_available = FALSE;
 
+			printf("%d ", page_tables[process].pages[i].frame);
 			// logging the swap out
 			log_(process, log_page_swapedout, &i);
 		}
 	}
 
 	page_tables[process].allocated_pages_number = 0;
+	pthread_mutex_unlock(&(table->LRU_mutex));
 }

@@ -22,7 +22,7 @@ typedef struct {
 	uint process_id;
 	log_event event;
 	void* event_data;
-	clock_t when;
+	double when;
 } log_info;
 
 typedef struct {
@@ -33,6 +33,7 @@ typedef struct {
 
 #define MAX_LOG_ENTRIES 4096
 
+void init_logger(void);
 bool log_(uint, log_event, void*);
 // void flush_log(void);
 void treat_log_info(log_info*);

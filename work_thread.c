@@ -14,7 +14,7 @@ void* thread_code(void* _t_info) {
 	while(threads_are_running) {
 		int random_page = rand() % MAX_PAGES;
 		m_managementor_get_page(t_info->t_id, random_page);
-		sleep(SLEEP_TIME);
+		usleep(SLEEP_TIME* 1000 + (rand() % 200 - 100));
 	}
 	log_(t_info->t_id, log_process_ended, 0);
 	return NULL;

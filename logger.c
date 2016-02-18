@@ -4,14 +4,20 @@
 #include "work_thread.h"
 #include "memory_managementor.h"
 #include "logger.h"
+#include "timer.h"
+
+static double start_time;
+
+void init_logger() {
+	GET_TIME(start_time);
+}
 
 bool log_(uint process_id, log_event event, void* event_data) {
 	log_info info = {};
-	clock_t now = clock();
 	info.process_id = process_id;
 	info.event = event;
 	info.event_data = event_data;
-	info.when = now;
+	GET_TIME(info.when);
 
 	treat_log_info(&info);
 
@@ -26,21 +32,22 @@ bool log_(uint process_id, log_event event, void* event_data) {
 
 void treat_log_info(log_info* info) {
 	uint* uint_event_data = (uint*) info->event_data;
+	double seconds = info->when - start_time;
 	switch(info->event) {
 		case log_process_created :
-			printf("Process %d created at %ld\n", info->process_id, info->when);
+			printf("Process %d created at %.3lfs\n", info->process_id, seconds);
 			break;
 		case log_process_ended :
-			printf("Process %d ended at %ld\n", info->process_id, info->when);
+			printf("Process %d ended at %.3lfs\n", info->process_id, seconds);
 			break;
 		case log_page_requested :
-			printf("Process %d requested page %d at %ld\n", info->process_id, *uint_event_data, info->when);
+			printf("Process %d requested page %d at %.3lfs\n", info->process_id, *uint_event_data, seconds);
 			break;
 		case log_page_swapedout :
-			printf("Page %d of process %d swaped out at %ld\n", *uint_event_data, info->process_id, info->when);
+			printf("Page %d of process %d swaped out at %.3lfs\n", *uint_event_data, info->process_id, seconds);
 			break;
 		case log_page_fault :
-			printf("Pagefault in page %d of process %d at %ld\n", info->process_id, *uint_event_data, info->when);
+			printf("Pagefault in page %d of process %d at %.3lfs\n", info->process_id, *uint_event_data, seconds);
 			break;
 		case log_page_delivered :
 			printf("Virtual page table of process %d\n", info->process_id);
@@ -55,7 +62,7 @@ void treat_log_info(log_info* info) {
 			print_LRU((page_table*) info->event_data);
 			break;
 		case log_frames_updated :
-			printf("Main memory:\n");
+			printf("Main memory at %.3lfs:\n", seconds);
 			print_main_memory((page_table*) info->event_data);
 			break;
 		default :
@@ -91,6 +98,11 @@ void print_main_memory(page_table* tables) {
 		for(uint LRU_page_index = 0; LRU_page_index < table->allocated_pages_number; LRU_page_index++) {
 			uint page_index = table->LRU_pages[LRU_page_index];
 			uint frame = table->pages[page_index].frame;
+
+			if(frames[frame].is_allocated) {
+				printf("--------------------WARNING--------------------\n");
+				printf("the frame %d is already allocated\n", frame);
+			}
 
 			frames[frame].process_id = process_index;
 			frames[frame].page_number = page_index;
