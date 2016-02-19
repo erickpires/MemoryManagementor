@@ -87,20 +87,8 @@ void m_managementor_get_page(uint id, uint page_number) {
 				// now we know who to retire
 				swap_out_process(oldest_process);
 
-				printf("\n\nNew frames are: \n");
-				for(frame_list_node* node = free_frames; node != NULL; node = node->next) {
-					printf("%d ", node->frame);
-				}
-				puts("");
-
 				// adding the new one
 				uint frame = remove_free_frame();
-
-				printf("\n\nNew frames are: \n");
-				for(frame_list_node* node = free_frames; node != NULL; node = node->next) {
-					printf("%d ", node->frame);
-				}
-				puts("");
 
 				pthread_mutex_unlock(&frames_mutex);
 
@@ -204,9 +192,6 @@ void swap_out_process(uint process) {
 	page_table* table = page_tables + process;
 
 	pthread_mutex_lock(&(table->LRU_mutex));
-	printf("Old frames are: ");
-
-	// for(uint page_index = 0; page_)
 
 	for(uint i = 0; i < MAX_PAGES; i++) {
 		if(table->pages[i].is_available) {
