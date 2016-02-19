@@ -20,7 +20,6 @@ typedef struct {
 	page_info pages[MAX_PAGES];
 	uint LRU_pages[WORKING_SET_LIMIT];
 	uint allocated_pages_number;
-	pthread_mutex_t LRU_mutex;
 	clock_t most_recent_page_time;
 } page_table;
 
